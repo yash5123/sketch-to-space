@@ -81,6 +81,7 @@ class Suggestion:
     ocr_verified: bool = False
     details: str = ""
     identical_labels: list[str] = field(default_factory=list)
+    why: str = ""
 
 
 def chain_constraint(cid, total, parts, tol_mm, wall_mm=None, wall_max_mm=230.0) -> Constraint:
@@ -120,7 +121,7 @@ def check(labels: dict[str, Label], constraints: list[Constraint]) -> list[Viola
 
 
 def covered_ids(labels: dict[str, Label], constraints: list[Constraint]) -> set[str]:
-    """Labels that appear in at least one checkable constraint (others are 'unverified')."""
+    """Labels that appear in at least one constraint (others are 'unverified')."""
     values = _values(labels)
     covered = set()
     for c in constraints:
@@ -285,13 +286,46 @@ def suggest(labels: dict[str, Label], constraints: list[Constraint], max_results
 
             if rem_viols < len(base) or rem_excess < base_excess - 50.0:
                 seen.add(key)
+                # Compute remaining gap on relevant constraints to distinguish exact vs within tolerance
+                max_rel_gap = 0.0
+                for c in constraints:
+                    if rep_id == c.total or rep_id in c.parts:
+                        if c.total in trial and all(p in trial for p in c.parts):
+                            g = abs(trial[c.total] - sum(trial[p] for p in c.parts))
+                            max_rel_gap = max(max_rel_gap, g)
+
                 if rem_viols == 0:
-                    status = "weak" if is_weak else "complete"
+                    if is_weak:
+                        status = "weak"
+                    elif max_rel_gap <= 1.0:
+                        status = "exact"
+                    else:
+                        status = "within tolerance"
                 else:
                     status = "partial"
-                det_text = details
-                if is_weak:
-                    det_text = (det_text + "; " if det_text else "") + "weak: uses upper half of wall allowance"
+
+                # One-line reason for Why this fix
+                diffs = [(txt[idx], new_text[idx]) for idx in range(min(len(txt), len(new_text))) if txt[idx] != new_text[idx]]
+                if len(txt) == len(new_text) and len(diffs) == 1:
+                    digit_reason = f"one digit changes, {diffs[0][0]} vs {diffs[0][1]}"
+                else:
+                    digit_reason = ""
+
+                if status == "exact":
+                    context_reason = "matches the other rooms in this column"
+                elif status == "within tolerance":
+                    context_reason = "passes only within wall allowance"
+                elif is_weak:
+                    context_reason = "uses upper half of wall allowance"
+                else:
+                    context_reason = "partially reduces constraint deficit"
+
+                if digit_reason:
+                    reason_text = f"{digit_reason} - {context_reason}"
+                else:
+                    reason_text = context_reason
+
+                full_details = f"{details}; {reason_text}" if details else reason_text
 
                 results.append(Suggestion(
                     rep_id, txt, new_text, rem_viols, cost,
@@ -301,8 +335,9 @@ def suggest(labels: dict[str, Label], constraints: list[Constraint], max_results
                     hypothesis="digit_confusion",
                     support=min_sup,
                     ocr_verified=has_ocr,
-                    details=det_text,
+                    details=full_details,
                     identical_labels=lids,
+                    why=reason_text,
                 ))
 
     # Tie-break: zero violations, non-weak before weak, cost, support (fewer passes / no OCR first)

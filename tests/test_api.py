@@ -148,3 +148,78 @@ def test_box_sanity(client):
                 # Unique box per label
                 assert box not in boxes_seen
                 boxes_seen.add(box)
+
+
+def test_preview_stores_nothing(client):
+    """POST /api/preview validates, checks copy, and stores nothing."""
+    # Invalid preview
+    inv_resp = client.post("/api/preview", json={"name": "synth_008", "label_id": "room_1_w", "new_text": "bad_dim"})
+    assert inv_resp.status_code == 200
+    assert inv_resp.json()["valid"] is False
+    assert "Invalid" in inv_resp.json()["error"] or "Parse" in inv_resp.json()["error"]
+
+    # Valid preview resolving conflict
+    val_resp = client.post("/api/preview", json={"name": "synth_008", "label_id": "room_1_w", "new_text": "4.729"})
+    assert val_resp.status_code == 200
+    data = val_resp.json()
+    assert data["valid"] is True
+    assert data["conflicts_remaining"] == 0
+    assert data["resolved"] is True
+    assert "changed_areas" in data
+    assert data["sum_of_rooms_ratio"] is not None
+
+    # Verify original in-memory copy was NOT modified (stores nothing)
+    plan_resp = client.get("/api/plan/synth_008")
+    assert len(plan_resp.json()["conflicts"]) == 1
+    # Check that room_1_w is still 4.129
+    r1 = next(l for l in plan_resp.json()["labels"] if l["id"] == "room_1_w")
+    assert r1["text"] == "4.129"
+
+
+def test_confirm_revert_changelog(client):
+    """Confirm records history, changelog exports text, and revert restores value."""
+    # Confirm edit
+    c_resp = client.post("/api/confirm", json={"name": "synth_008", "label_id": "room_1_w", "new_text": "4.729", "source": "typed"})
+    assert c_resp.status_code == 200
+    assert len(c_resp.json()["remaining_conflicts"]) == 0
+    assert len(c_resp.json()["change_history"]) == 1
+
+    # Changelog
+    cl_resp = client.get("/api/changelog/synth_008")
+    assert cl_resp.status_code == 200
+    assert "4.129 -> 4.729" in cl_resp.text
+    assert "Source: typed" in cl_resp.text
+
+    # Revert
+    rev_resp = client.post("/api/revert", json={"name": "synth_008", "label_id": "room_1_w"})
+    assert rev_resp.status_code == 200
+    assert rev_resp.json()["status"] == "reverted"
+    assert len(rev_resp.json()["plan"]["conflicts"]) == 1
+
+    # Reset
+    reset_resp = client.post("/api/reset", json={"name": "synth_008"})
+    assert reset_resp.status_code == 200
+
+
+def test_replaced_image_endpoint(client):
+    """GET /api/replaced/{name} returns valid image bytes."""
+    for name in ["synth_008", "test6"]:
+        resp = client.get(f"/api/replaced/{name}")
+        assert resp.status_code == 200
+        assert resp.headers["content-type"].startswith("image/")
+        assert len(resp.content) > 100
+
+
+def test_report_html_endpoint(client):
+    """GET /api/report/{name} returns printable self-contained HTML audit report."""
+    for name in ["synth_008", "test6"]:
+        resp = client.get(f"/api/report/{name}")
+        assert resp.status_code == 200
+        assert "text/html" in resp.headers["content-type"]
+        html = resp.text
+        assert "<!DOCTYPE html>" in html
+        assert "<html" in html
+        assert "@media print" in html
+        assert "Plan Verification" in html
+
+

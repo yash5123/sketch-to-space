@@ -204,7 +204,7 @@ def run_plan(
     Returns:
         Structured dictionary containing labels, constraints with explicit slack formulas,
         conflicts with ranked suggestions, room areas, envelope metrics, coverage metrics,
-        and uncheckable values. Never modifies input.
+        and unverified values. Never modifies input.
     """
     if tol_mm is None:
         tol_mm = config.CHAIN_TOLERANCE_MM
@@ -747,12 +747,12 @@ def run_plan(
             envelope_flag = "sum of rooms exceeds envelope (>100%)"
 
     # -------------------------------------------------------------------------
-    # 5. List uncheckable values (no redundancy on the plan)
+    # 5. List unverified values (no redundancy on the plan)
     # -------------------------------------------------------------------------
-    uncheckable_values: list[dict] = []
+    unverified_values: list[dict] = []
     for rec in label_records:
         if rec["id"] not in covered_ids:
-            uncheckable_values.append({
+            unverified_values.append({
                 "id": rec["id"],
                 "text_as_written": rec["text_as_written"],
                 "applies_to": rec["applies_to"],
@@ -796,7 +796,7 @@ def run_plan(
         "envelope_sq_m": stated_envelope_sq_m,
         "envelope_dims_formatted": stated_envelope_dims_formatted,
         "envelope_ratio_pct": stated_envelope_ratio_pct,
-        "uncheckable_values": uncheckable_values,
+        "unverified_values": unverified_values,
         "coverage": {
             "labels_in_constraints": covered_labels_count,
             "total_labels": total_labels,
@@ -812,6 +812,6 @@ def run_plan(
             "unit_ambiguous_count": ambiguous_count,
             "constraints_count": len(constraints),
             "conflicts_count": len(conflicts),
-            "uncheckable_count": len(uncheckable_values),
+            "unverified_count": len(unverified_values),
         },
     }

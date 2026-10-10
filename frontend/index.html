@@ -3,388 +3,614 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sketch-to-Space - Verified Floor Plans</title>
+  <title>Sketch-to-Space - AI-Powered Floor Plan Verification</title>
+  <meta name="description" content="Upload a floor plan photo or scan. Extract dimensions, calculate room areas, and find inconsistencies with deterministic mathematical verification.">
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
-  <a href="#workspace" class="skip-link">Skip to main content</a>
+<body class="landing-page-body">
+  <a href="#mainContent" class="skip-link">Skip to main content</a>
 
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="brand">
-        <svg class="logo-icon" width="36" height="36" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+  <!-- Top Navigation -->
+  <header class="landing-header">
+    <div class="landing-nav-container">
+      <a href="/" class="landing-brand" aria-label="Sketch-to-Space Home">
+        <svg class="logo-icon" width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden="true">
           <rect x="2" y="2" width="24" height="24" rx="4" stroke="currentColor" stroke-width="2"/>
           <path d="M2 9H26M9 2V26M18 2V9M9 18H26" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"/>
-          <circle cx="9" cy="9" r="2.5" fill="#10b981"/>
-          <circle cx="18" cy="18" r="2.5" fill="#38bdf8"/>
+          <circle cx="9" cy="9" r="2.5" fill="#2F7D4F"/>
+          <circle cx="18" cy="18" r="2.5" fill="#1F4E5F"/>
         </svg>
-        <div class="brand-text">
-          <h1 class="brand-title">Sketch-to-Space</h1>
-          <p class="brand-tagline">Finds the dimension that does not add up, before it becomes a construction mistake.</p>
-        </div>
-      </div>
-      <div class="header-actions">
-        <button id="howItWorksBtn" class="btn btn-secondary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-          <span>How it works</span>
-        </button>
-        <button id="guidedDemoBtn" class="btn btn-primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-          <span>Guided demo</span>
+        <span class="landing-brand-title">Sketch-to-Space</span>
+      </a>
+
+      <nav id="landingNav" class="landing-nav" aria-label="Main Navigation">
+        <ul class="nav-links">
+          <li><a href="#product">Product</a></li>
+          <li><a href="#how-it-works">How it works</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </nav>
+
+      <div class="landing-header-cta">
+        <a href="/app.html" class="btn btn-primary landing-cta-btn">
+          <span>Analyze a Floor Plan</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
+        <button id="mobileMenuBtn" class="mobile-menu-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Main Container -->
-  <main class="app-main">
-    <!-- Plan Picker Section: Shows the 2 demo plans with their preview images -->
-    <section class="picker-section" aria-label="Sample floor plans">
-      <div class="section-header-row">
-        <div class="section-title-wrap">
-          <h2 class="section-title">
-            <svg class="section-title-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-            <span>Select a Demo Plan</span>
-          </h2>
-          <span class="section-subtitle">Loaded locally from verified dataset - click a plan to inspect</span>
+  <main id="mainContent">
+    <!-- 1. Hero Section -->
+    <section class="landing-hero" aria-labelledby="heroTitle">
+      <div class="hero-container">
+        <h1 id="heroTitle" class="hero-headline">
+          Your floor plan.<br>
+          <span class="hero-accent">Actually understood.</span>
+        </h1>
+        <p class="hero-supporting">
+          Upload a floor plan photo or scan. Extract dimensions, calculate room areas, and find inconsistencies.
+        </p>
+        <div class="hero-action-group">
+          <a href="/app.html" class="btn btn-primary btn-hero">
+            <span>Analyze Your Floor Plan</span>
+          </a>
+          <p class="hero-badge-note">
+            AI-powered analysis &middot; Local-first processing
+          </p>
         </div>
-        <button id="uploadOwnBtn" class="btn btn-outline">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <span>Upload your own</span>
-        </button>
-      </div>
-      <div id="samplesGrid" class="samples-grid" role="radiogroup" aria-label="Available floor plans">
-        <!-- Rendered dynamically by app.js: Synth 008 & Test 6 -->
       </div>
     </section>
 
-    <!-- Main Workspace -->
-    <div id="workspace" class="workspace-grid">
-      <!-- Left Column: Visual Inspector -->
-      <section class="visual-column" aria-label="Plan visual inspector">
-        <div class="card viewer-card">
-          <div class="tab-header" role="tablist">
-            <button id="tabPhoto" class="tab-btn active" role="tab" aria-selected="true" aria-controls="viewPhoto">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-              <span>Photo</span>
-            </button>
-            <button id="tabCorrected" class="tab-btn" role="tab" aria-selected="false" aria-controls="viewCorrected">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-              <span>Corrected plan</span>
-            </button>
-            <button id="tabSideBySide" class="tab-btn" role="tab" aria-selected="false" aria-controls="viewSideBySide">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="12" y1="3" x2="12" y2="21"></line></svg>
-              <span>Side by side</span>
-            </button>
-          </div>
-
-          <!-- Tab 1: Photo View -->
-          <div id="viewPhoto" class="tab-content active" role="tabpanel" aria-labelledby="tabPhoto">
-            <div id="imageStage" class="image-stage">
-              <div id="viewportTransform" class="viewport-transform">
-                <img id="planImage" class="plan-img" alt="Floor plan visual inspection" src="">
-                <svg id="boxesOverlay" class="boxes-overlay" aria-label="Transcribed dimension bounding boxes"></svg>
-                <div id="boxHoverChip" class="box-hover-chip" hidden></div>
+    <!-- 2. Main Architectural Showcase -->
+    <section id="product" class="showcase-section" aria-label="Floor plan inspection showcase">
+      <div class="showcase-outer-frame">
+        <div class="showcase-cad-board">
+          <div class="showcase-sidebar">
+            <h2 class="showcase-heading">Every dimension.<br>Understood.</h2>
+            <div class="showcase-legend-grid">
+              <div class="legend-entry">
+                <span class="legend-swatch swatch-room"></span>
+                <span>Rooms detected</span>
               </div>
-            </div>
-
-          </div>
-
-          <!-- Tab 2: Corrected SVG View -->
-          <div id="viewCorrected" class="tab-content" role="tabpanel" aria-labelledby="tabCorrected" hidden>
-            <div id="svgContainer" class="svg-stage">
-              <div class="stage-placeholder">Loading corrected schematic...</div>
-            </div>
-          </div>
-
-          <!-- Tab 3: Side-by-Side View -->
-          <div id="viewSideBySide" class="tab-content" role="tabpanel" aria-labelledby="tabSideBySide" hidden>
-            <div class="side-by-side-grid">
-              <div class="sbs-pane">
-                <div class="pane-label">Original Sketch</div>
-                <img id="sbsPlanImage" class="sbs-img" alt="Original floor plan" src="">
+              <div class="legend-entry">
+                <span class="legend-swatch swatch-dim"></span>
+                <span>Dimensions extracted</span>
               </div>
-              <div class="sbs-pane">
-                <div class="pane-label">Corrected Layout</div>
-                <div id="sbsSvgContainer" class="sbs-svg-wrapper"></div>
+              <div class="legend-entry">
+                <span class="legend-swatch swatch-issue">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polygon points="12 2 22 20 2 20"></polygon></svg>
+                </span>
+                <span>Issues found</span>
+              </div>
+              <div class="legend-entry">
+                <span class="legend-swatch swatch-ready">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </span>
+                <span>Ready for review</span>
               </div>
             </div>
           </div>
-        </div>
-      </section>
 
-      <!-- Right Column: Verification & Findings -->
-      <section class="findings-column" aria-label="Verification findings and corrections">
-        <!-- Summary Stats Bar: Contiguous Ruled Instrument Bay -->
-        <div class="summary-stats-bar" role="region" aria-label="Summary telemetry">
-          <div class="stat-cell stat-cell-labels">
-            <div class="stat-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-              <span class="stat-label">Labels read</span>
+          <div class="showcase-canvas-wrap">
+            <svg viewBox="0 0 760 480" class="showcase-floorplan-svg" aria-label="Interactive architectural floor plan showcase">
+              <defs>
+                <marker id="sc-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#1F4E5F"/>
+                </marker>
+                <marker id="sc-arrow-light" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#71B2C9"/>
+                </marker>
+              </defs>
+
+              <!-- Drafting Grid Background -->
+              <pattern id="cadGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+              </pattern>
+              <rect width="100%" height="100%" fill="url(#cadGrid)" />
+
+              <!-- Outer Boundary Dimension String: Top 36'-0" -->
+              <line x1="140" y1="36" x2="620" y2="36" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="140" y1="28" x2="140" y2="44" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="620" y1="28" x2="620" y2="44" stroke="#71B2C9" stroke-width="1.5"/>
+              <rect x="345" y="24" width="70" height="24" rx="4" fill="#13252E" stroke="#71B2C9" stroke-width="1"/>
+              <text x="380" y="40" fill="#E2F1F8" font-size="12" font-family="monospace" font-weight="700" text-anchor="middle">36'-0"</text>
+
+              <!-- Outer Boundary Dimension String: Left 26'-0" -->
+              <line x1="100" y1="70" x2="100" y2="390" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="92" y1="70" x2="108" y2="70" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="92" y1="390" x2="108" y2="390" stroke="#71B2C9" stroke-width="1.5"/>
+              <rect x="68" y="218" width="64" height="24" rx="4" fill="#13252E" stroke="#71B2C9" stroke-width="1"/>
+              <text x="100" y="234" fill="#E2F1F8" font-size="12" font-family="monospace" font-weight="700" text-anchor="middle">26'-0"</text>
+
+              <!-- Outer Boundary Dimension String: Right 9'-0" -->
+              <line x1="655" y1="180" x2="655" y2="300" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="647" y1="180" x2="663" y2="180" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="647" y1="300" x2="663" y2="300" stroke="#71B2C9" stroke-width="1.5"/>
+              <rect x="626" y="228" width="58" height="24" rx="4" fill="#13252E" stroke="#71B2C9" stroke-width="1"/>
+              <text x="655" y="244" fill="#E2F1F8" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">9'-0"</text>
+
+              <!-- Exterior Walls (Heavy outline) -->
+              <path d="M 140 70 L 620 70 L 620 180 L 638 180 L 638 300 L 620 300 L 620 390 L 140 390 Z" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="miter"/>
+
+              <!-- Interior Room Partition Walls -->
+              <line x1="330" y1="70" x2="330" y2="230" stroke="#FFFFFF" stroke-width="3"/>
+              <line x1="450" y1="70" x2="450" y2="230" stroke="#FFFFFF" stroke-width="3"/>
+              <line x1="140" y1="230" x2="450" y2="230" stroke="#FFFFFF" stroke-width="3"/>
+              <line x1="250" y1="230" x2="250" y2="390" stroke="#FFFFFF" stroke-width="3"/>
+              <line x1="450" y1="230" x2="450" y2="390" stroke="#FFFFFF" stroke-width="3"/>
+
+              <!-- Door swings -->
+              <path d="M 330 180 A 30 30 0 0 1 360 210" fill="none" stroke="#71B2C9" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <line x1="330" y1="180" x2="330" y2="210" stroke="#71B2C9" stroke-width="1.5"/>
+
+              <path d="M 450 310 A 30 30 0 0 1 420 340" fill="none" stroke="#71B2C9" stroke-width="1.5" stroke-dasharray="3 3"/>
+              <line x1="450" y1="310" x2="450" y2="340" stroke="#71B2C9" stroke-width="1.5"/>
+
+              <!-- Window symbols -->
+              <rect x="200" y="67" width="50" height="6" fill="#71B2C9"/>
+              <rect x="360" y="67" width="40" height="6" fill="#71B2C9"/>
+              <rect x="520" y="67" width="60" height="6" fill="#71B2C9"/>
+
+              <!-- Room 1: Bedroom -->
+              <g transform="translate(160, 110)">
+                <rect x="0" y="0" width="150" height="95" rx="4" fill="rgba(31,78,95,0.25)" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <text x="75" y="42" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">Bedroom</text>
+                <text x="75" y="62" fill="#93C5FD" font-size="12" font-family="monospace" text-anchor="middle">12'0" &times; 11'0"</text>
+              </g>
+
+              <!-- Room 2: Kitchen -->
+              <g transform="translate(345, 110)">
+                <rect x="0" y="0" width="90" height="95" rx="4" fill="rgba(31,78,95,0.25)" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <text x="45" y="42" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">Kitchen</text>
+                <text x="45" y="62" fill="#93C5FD" font-size="12" font-family="monospace" text-anchor="middle">10'0" &times; 9'0"</text>
+              </g>
+
+              <!-- Room 3: Living Room -->
+              <g transform="translate(470, 140)">
+                <rect x="0" y="0" width="135" height="180" rx="4" fill="rgba(31,78,95,0.25)" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <text x="67" y="90" fill="#FFFFFF" font-size="15" font-weight="700" text-anchor="middle">Living Room</text>
+                <text x="67" y="112" fill="#93C5FD" font-size="12" font-family="monospace" text-anchor="middle">18'8" &times; 14'0"</text>
+              </g>
+
+              <!-- Room 4: Bath -->
+              <g transform="translate(160, 265)">
+                <rect x="0" y="0" width="75" height="95" rx="4" fill="rgba(31,78,95,0.25)" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <text x="37" y="42" fill="#FFFFFF" font-size="13" font-weight="700" text-anchor="middle">Bath</text>
+                <text x="37" y="62" fill="#93C5FD" font-size="11" font-family="monospace" text-anchor="middle">7'0" &times; 5'6"</text>
+              </g>
+
+              <!-- Room 5: Dining -->
+              <g transform="translate(270, 265)">
+                <rect x="0" y="0" width="160" height="95" rx="4" fill="rgba(31,78,95,0.25)" stroke="#38BDF8" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <text x="80" y="42" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">Dining</text>
+                <text x="80" y="62" fill="#93C5FD" font-size="12" font-family="monospace" text-anchor="middle">11'0" &times; 10'0"</text>
+              </g>
+
+              <!-- Bottom Sub-dimensions: 12'-0" | 11'-0" | 13'-0" -->
+              <line x1="140" y1="416" x2="330" y2="416" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="140" y1="408" x2="140" y2="424" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="330" y1="408" x2="330" y2="424" stroke="#71B2C9" stroke-width="1.5"/>
+              <rect x="205" y="404" width="60" height="24" rx="4" fill="#13252E" stroke="#71B2C9" stroke-width="1"/>
+              <text x="235" y="420" fill="#E2F1F8" font-size="12" font-family="monospace" font-weight="700" text-anchor="middle">12'-0"</text>
+
+              <line x1="330" y1="416" x2="450" y2="416" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="450" y1="408" x2="450" y2="424" stroke="#71B2C9" stroke-width="1.5"/>
+              <rect x="365" y="404" width="60" height="24" rx="4" fill="#13252E" stroke="#71B2C9" stroke-width="1"/>
+              <text x="395" y="420" fill="#E2F1F8" font-size="12" font-family="monospace" font-weight="700" text-anchor="middle">11'-0"</text>
+
+              <line x1="450" y1="416" x2="620" y2="416" stroke="#71B2C9" stroke-width="1.5"/>
+              <line x1="620" y1="408" x2="620" y2="424" stroke="#71B2C9" stroke-width="1.5"/>
+              <rect x="505" y="404" width="60" height="24" rx="4" fill="#13252E" stroke="#71B2C9" stroke-width="1"/>
+              <text x="535" y="420" fill="#E2F1F8" font-size="12" font-family="monospace" font-weight="700" text-anchor="middle">13'-0"</text>
+
+              <!-- Injected Inconsistency Warning Marker on the Partition Wall -->
+              <g transform="translate(442, 382)">
+                <polygon points="10,0 20,18 0,18" fill="#B3261E" stroke="#FFFFFF" stroke-width="1.5"/>
+                <text x="10" y="15" fill="#FFFFFF" font-size="11" font-weight="900" text-anchor="middle">!</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Editorial Introduction -->
+    <section class="editorial-section">
+      <div class="editorial-container">
+        <div class="editorial-text-col">
+          <h2 class="editorial-heading">A drawing should not leave you guessing.</h2>
+          <p class="editorial-p">
+            Sketch-to-Space combines visual AI, OCR and mathematical validation to read your floor plans with a second opinion.
+          </p>
+          <p class="editorial-p">
+            We extract every dimension, calculate areas, check relationships and flag anything that does not make sense.
+          </p>
+          <p class="editorial-p">
+            You stay in control - review, confirm and export with confidence.
+          </p>
+        </div>
+        <div class="editorial-visual-col">
+          <div class="paper-draft-card">
+            <svg viewBox="0 0 460 300" class="paper-draft-svg" aria-label="Floor plan schematic drawing">
+              <rect width="100%" height="100%" fill="#FBF9F4"/>
+              <!-- Grid lines -->
+              <line x1="60" y1="30" x2="400" y2="30" stroke="#BDCED3" stroke-width="1"/>
+              <line x1="60" y1="20" x2="60" y2="40" stroke="#BDCED3" stroke-width="1"/>
+              <line x1="400" y1="20" x2="400" y2="40" stroke="#BDCED3" stroke-width="1"/>
+              <text x="230" y="25" fill="#1F4E5F" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">36'-0"</text>
+
+              <!-- Wall Layout -->
+              <rect x="60" y="45" width="340" height="205" fill="none" stroke="#1F2A37" stroke-width="3"/>
+              <line x1="180" y1="45" x2="180" y2="150" stroke="#1F2A37" stroke-width="2"/>
+              <line x1="60" y1="150" x2="250" y2="150" stroke="#1F2A37" stroke-width="2"/>
+              <line x1="250" y1="45" x2="250" y2="250" stroke="#1F2A37" stroke-width="2"/>
+
+              <!-- Labels -->
+              <text x="120" y="100" fill="#1F2A37" font-size="12" font-weight="600" text-anchor="middle">Bedroom</text>
+              <text x="120" y="116" fill="#5B6675" font-size="10" font-family="monospace" text-anchor="middle">12'0" x 11'0"</text>
+
+              <text x="215" y="100" fill="#1F2A37" font-size="12" font-weight="600" text-anchor="middle">Dining</text>
+              <text x="215" y="116" fill="#5B6675" font-size="10" font-family="monospace" text-anchor="middle">11'0" x 10'0"</text>
+
+              <text x="325" y="140" fill="#1F2A37" font-size="13" font-weight="600" text-anchor="middle">Living Room</text>
+              <text x="325" y="158" fill="#5B6675" font-size="11" font-family="monospace" text-anchor="middle">18'8" x 14'0"</text>
+
+              <!-- Bottom Dimension Strings -->
+              <line x1="60" y1="270" x2="180" y2="270" stroke="#BDCED3" stroke-width="1"/>
+              <text x="120" y="285" fill="#1F4E5F" font-size="10" font-family="monospace" text-anchor="middle">12'-0"</text>
+
+              <line x1="180" y1="270" x2="250" y2="270" stroke="#BDCED3" stroke-width="1"/>
+              <text x="215" y="285" fill="#1F4E5F" font-size="10" font-family="monospace" text-anchor="middle">11'-0"</text>
+
+              <line x1="250" y1="270" x2="400" y2="270" stroke="#BDCED3" stroke-width="1"/>
+              <text x="325" y="285" fill="#1F4E5F" font-size="10" font-family="monospace" text-anchor="middle">13'-0"</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Feature Section -->
+    <section id="features" class="features-section" aria-labelledby="featuresTitle">
+      <div class="features-container">
+        <h2 id="featuresTitle" class="section-headline">What your floor plan reveals.</h2>
+
+        <div class="features-grid">
+          <!-- Feature 1: Dimension Extraction -->
+          <article class="feature-card">
+            <div class="micro-visual-box">
+              <svg viewBox="0 0 200 64" class="micro-svg">
+                <line x1="20" y1="36" x2="90" y2="36" stroke="#1F4E5F" stroke-width="1.5"/>
+                <line x1="20" y1="28" x2="20" y2="44" stroke="#1F4E5F" stroke-width="1.5"/>
+                <line x1="90" y1="28" x2="90" y2="44" stroke="#1F4E5F" stroke-width="1.5"/>
+                <text x="55" y="32" fill="#1F4E5F" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">12'-0"</text>
+
+                <line x1="110" y1="36" x2="180" y2="36" stroke="#1F4E5F" stroke-width="1.5"/>
+                <line x1="110" y1="28" x2="110" y2="44" stroke="#1F4E5F" stroke-width="1.5"/>
+                <line x1="180" y1="28" x2="180" y2="44" stroke="#1F4E5F" stroke-width="1.5"/>
+                <text x="145" y="32" fill="#1F4E5F" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">11'-0"</text>
+              </svg>
             </div>
-            <span id="statLabelsRead" class="stat-value">-</span>
-          </div>
-          <div class="stat-cell stat-cell-checkable">
-            <div class="stat-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              <span class="stat-label">Checkable</span>
+            <h3 class="feature-title">Dimension extraction</h3>
+            <p class="feature-desc">We read every measurement from your drawing with high precision.</p>
+          </article>
+
+          <!-- Feature 2: Room Area Calculations -->
+          <article class="feature-card">
+            <div class="micro-visual-box">
+              <svg viewBox="0 0 200 64" class="micro-svg">
+                <rect x="40" y="10" width="120" height="44" rx="3" fill="#DCE9EE" stroke="#1F4E5F" stroke-width="1.2" stroke-dasharray="3 2"/>
+                <text x="100" y="27" fill="#1F4E5F" font-size="11" font-weight="700" text-anchor="middle">Bedroom</text>
+                <text x="100" y="42" fill="#2F7D4F" font-size="10" font-family="monospace" font-weight="700" text-anchor="middle">132 sq ft</text>
+              </svg>
             </div>
-            <span id="statCheckable" class="stat-value">-</span>
-          </div>
-          <div class="stat-cell stat-cell-conflict">
-            <div class="stat-header">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-              <span class="stat-label">Conflicts</span>
+            <h3 class="feature-title">Room area calculations</h3>
+            <p class="feature-desc">Instant area computation for every room and total built-up area.</p>
+          </article>
+
+          <!-- Feature 3: Walls, Doors & Windows -->
+          <article class="feature-card">
+            <div class="micro-visual-box">
+              <svg viewBox="0 0 200 64" class="micro-svg">
+                <rect x="30" y="12" width="14" height="40" fill="#1F2A37"/>
+                <rect x="156" y="12" width="14" height="40" fill="#1F2A37"/>
+                <line x1="44" y1="32" x2="100" y2="32" stroke="#1F4E5F" stroke-width="2"/>
+                <path d="M 100 32 A 40 40 0 0 1 140 52" fill="none" stroke="#2F7D4F" stroke-width="1.5" stroke-dasharray="2 2"/>
+                <line x1="60" y1="20" x2="90" y2="20" stroke="#71B2C9" stroke-width="3"/>
+              </svg>
             </div>
-            <span id="statConflicts" class="stat-value">-</span>
+            <h3 class="feature-title">Walls, doors &amp; windows</h3>
+            <p class="feature-desc">Automatic detection of structural elements and openings.</p>
+          </article>
+
+          <!-- Feature 4: Inconsistency Detection -->
+          <article class="feature-card">
+            <div class="micro-visual-box">
+              <svg viewBox="0 0 200 64" class="micro-svg">
+                <line x1="20" y1="38" x2="180" y2="38" stroke="#B3261E" stroke-width="1.5" stroke-dasharray="4 2"/>
+                <circle cx="100" cy="38" r="10" fill="#B3261E"/>
+                <text x="100" y="42" fill="#FFFFFF" font-size="10" font-weight="900" text-anchor="middle">!</text>
+                <text x="100" y="20" fill="#B3261E" font-size="11" font-family="monospace" font-weight="700" text-anchor="middle">36'-0" conflict</text>
+              </svg>
+            </div>
+            <h3 class="feature-title">Inconsistency detection</h3>
+            <p class="feature-desc">We find mismatched dimensions before they become costly mistakes.</p>
+          </article>
+
+          <!-- Feature 5: Unclear Handwriting Warnings -->
+          <article class="feature-card">
+            <div class="micro-visual-box">
+              <svg viewBox="0 0 200 64" class="micro-svg" aria-hidden="true">
+                <rect x="18" y="16" width="164" height="32" rx="5" fill="#FBF0D9" stroke="#B7791F" stroke-width="1"/>
+                <text x="28" y="32" fill="#8C5A14" font-size="11" font-family="ui-monospace, monospace" font-weight="700" dominant-baseline="central">11'6" or 12'0"?</text>
+                <circle cx="164" cy="32" r="7.5" fill="#B7791F"/>
+                <text x="164" y="32" fill="#FFFFFF" font-size="9.5" font-weight="700" text-anchor="middle" dominant-baseline="central">?</text>
+              </svg>
+            </div>
+            <h3 class="feature-title">Unclear handwriting warnings</h3>
+            <p class="feature-desc">Flagging low-confidence readings that need your attention.</p>
+          </article>
+
+          <!-- Feature 6: Smart Correction Suggestions -->
+          <article class="feature-card">
+            <div class="micro-visual-box">
+              <svg viewBox="0 0 200 64" class="micro-svg">
+                <rect x="25" y="10" width="150" height="22" rx="3" fill="#E3F1E8" stroke="#2F7D4F" stroke-width="1"/>
+                <text x="35" y="25" fill="#266741" font-size="10" font-family="monospace" font-weight="700">11'6" &rarr; 12'0"</text>
+                <circle cx="160" cy="21" r="5" fill="#2F7D4F"/>
+                <text x="160" y="24" fill="#FFFFFF" font-size="7" font-weight="900" text-anchor="middle">&#10003;</text>
+
+                <rect x="25" y="36" width="150" height="22" rx="3" fill="#FBE4E1" stroke="#B3261E" stroke-width="1"/>
+                <text x="35" y="51" fill="#B3261E" font-size="10" font-family="monospace" font-weight="700">25'8" &rarr; 26'0"</text>
+              </svg>
+            </div>
+            <h3 class="feature-title">Smart correction suggestions</h3>
+            <p class="feature-desc">Ranked fixes with reasons - you confirm, we update everything.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+
+
+    <!-- 6. How It Works -->
+    <section id="how-it-works" class="steps-section" aria-labelledby="stepsTitle">
+      <div class="steps-container">
+        <h2 id="stepsTitle" class="section-headline centered-headline">How it works.</h2>
+
+        <div class="steps-row">
+          <!-- Step 01 -->
+          <div class="step-card">
+            <div class="step-num">01</div>
+            <div class="step-icon-wrap" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            </div>
+            <h3 class="step-title">Upload your drawing.</h3>
+            <p class="step-desc">Drop a clear photo, scan or PDF of your floor plan.</p>
+          </div>
+
+          <!-- Step 02 -->
+          <div class="step-card">
+            <div class="step-num">02</div>
+            <div class="step-icon-wrap" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            </div>
+            <h3 class="step-title">Let AI inspect and validate it.</h3>
+            <p class="step-desc">We extract dimensions, run mathematical checks and identify issues.</p>
+          </div>
+
+          <!-- Step 03 -->
+          <div class="step-card">
+            <div class="step-num">03</div>
+            <div class="step-icon-wrap" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            </div>
+            <h3 class="step-title">Review findings and export your report.</h3>
+            <p class="step-desc">Confirm suggestions and export a clean, verified floor plan report.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Product Workspace Preview -->
+    <section class="workspace-preview-section">
+      <div class="workspace-preview-container">
+        <div class="workspace-preview-text">
+          <h2 class="section-headline">Everything you need in one workspace.</h2>
+          <ul class="preview-bullets">
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F7D4F" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Interactive floor plan viewer</span>
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F7D4F" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Extracted dimensions &amp; areas</span>
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F7D4F" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Issue list with suggestions</span>
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F7D4F" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Manual confirmation workflow</span>
+            </li>
+            <li>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2F7D4F" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              <span>Export report (PDF / DXF coming soon)</span>
+            </li>
+          </ul>
+
+          <div class="preview-action-row">
+            <a href="/app.html" class="btn btn-primary">
+              <span>Try It Now</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+            </a>
           </div>
         </div>
 
-        <!-- Success/Undo Action Banner -->
-        <div id="actionBanner" class="action-banner" role="status" aria-live="polite" hidden>
-          <div class="banner-content">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            <div id="bannerText" class="banner-text">Correction accepted.</div>
-          </div>
-          <button id="undoBtn" class="btn btn-sm btn-outline">Undo</button>
-        </div>
-
-        <!-- Unit Ambiguity Warning Panel -->
-        <div id="unitAmbigPanel" class="unit-warning-panel" hidden>
-          <div class="warning-header">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-            <h3>Unit Ambiguity Warnings</h3>
-          </div>
-          <div id="unitAmbigList" class="unit-warning-list"></div>
-        </div>
-
-        <!-- Conflicts Section -->
-        <div id="conflictsSection" class="conflicts-section">
-          <div id="conflictsContainer" class="conflicts-container">
-            <!-- Conflict cards populated dynamically -->
-          </div>
-        </div>
-
-        <!-- Empty State (No Conflicts) -->
-        <div id="cleanStateCard" class="card clean-card" hidden>
-          <div class="clean-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          </div>
-          <div class="clean-content">
-            <h3>No conflicts found among checkable values</h3>
-            <p id="cleanCoverageText" class="clean-subtext">All checkable dimension chains satisfy their checksum equations within tolerance.</p>
-          </div>
-        </div>
-
-        <!-- Lower Section: Areas & Envelopes -->
-        <div class="card areas-card">
-          <div class="card-header">
-            <h3>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line></svg>
-              <span>Room Areas &amp; Boundary Envelopes</span>
-            </h3>
-            <span class="badge badge-accent">CAD Calculated</span>
-          </div>
-          <div class="areas-content">
-            <div class="envelope-summary-row">
-              <div class="env-item">
-                <span class="env-title">Sum of rooms read</span>
-                <span id="envSumRooms" class="env-val">-</span>
+        <div class="workspace-mockup-wrapper">
+          <div class="workspace-mockup-window">
+            <div class="mockup-header-bar">
+              <div class="mockup-dots">
+                <span class="dot"></span><span class="dot"></span><span class="dot"></span>
               </div>
-              <div class="env-item">
-                <span class="env-title">Stated envelope</span>
-                <span id="envStated" class="env-val">-</span>
-                <span id="envStatedRatio" class="env-ratio">-</span>
-              </div>
-              <div class="env-item">
-                <span class="env-title">Chain-sum envelope</span>
-                <span id="envChainSum" class="env-val">-</span>
-                <span id="envChainRatio" class="env-ratio">-</span>
-              </div>
+              <span class="mockup-title">Project: Sample Plan Verification - Workspace</span>
+              <a href="/app.html" class="mockup-open-btn">Open Live App &rarr;</a>
             </div>
-            <div id="envelopeFlagBanner" class="envelope-flag-banner" hidden></div>
-            <div class="rooms-table-wrapper">
-              <table class="rooms-table">
-                <thead>
-                  <tr>
-                    <th>Room</th>
-                    <th>Dimensions</th>
-                    <th>Area (sq ft)</th>
-                    <th>Area (sq m)</th>
-                  </tr>
-                </thead>
-                <tbody id="roomsTableBody">
-                  <!-- Rooms populated dynamically -->
-                </tbody>
-              </table>
+            <div class="mockup-body-split">
+              <!-- Left Mini Canvas -->
+              <div class="mockup-canvas">
+                <div class="mockup-plan-preview">
+                  <img src="/static/sketches/synth/synth_008.png" alt="Workspace plan canvas" class="mockup-plan-img">
+                  <div class="mockup-tag-badge">1 Inconsistency Flagged</div>
+                </div>
+              </div>
+              <!-- Right Mini Inspector -->
+              <div class="mockup-panel">
+                <div class="mockup-section-title">Room Areas</div>
+                <div class="mockup-row">
+                  <span>Living Room</span><span class="mono">250 sq ft</span>
+                </div>
+                <div class="mockup-row">
+                  <span>Kitchen</span><span class="mono">90 sq ft</span>
+                </div>
+                <div class="mockup-row">
+                  <span>Bedroom</span><span class="mono">132 sq ft</span>
+                </div>
+                <div class="mockup-row total-row">
+                  <strong>Total Rooms Area</strong><strong class="mono">630 sq ft</strong>
+                </div>
+
+                <div class="mockup-section-title mt-4">Issues Found</div>
+                <div class="mockup-issue-box">
+                  <div class="issue-pill-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#B3261E" stroke-width="3"><polygon points="12 2 22 20 2 20"></polygon></svg>
+                    <span>North wall mismatch</span>
+                  </div>
+                  <p class="issue-sub">Rooms sum to 35'-6", overall is 36'-0".</p>
+                  <a href="/app.html" class="btn btn-sm btn-primary issue-action-btn">Review &amp; Confirm (1)</a>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
+    </section>
 
-        <!-- Lower Section: Coverage & Unverified -->
-        <div class="card coverage-card">
-          <div class="card-header">
-            <h3>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-              <span>Plan Verification Coverage</span>
-            </h3>
-            <span id="coverageHeaderBadge" class="badge badge-ok">100% Verified</span>
-          </div>
-          <div class="coverage-content">
-            <div class="progress-bar-wrapper">
-              <div class="progress-labels">
-                <span id="coverageBarText">Checkable dimensions</span>
-                <span id="coveragePercentText">0%</span>
-              </div>
-              <div class="progress-track">
-                <div id="coverageFill" class="progress-fill" style="width: 0%;"></div>
+    <!-- 8. Frequently Asked Questions -->
+    <section id="faq" class="faq-section" aria-labelledby="faqTitle">
+      <div class="faq-container">
+        <h2 id="faqTitle" class="section-headline centered-headline">Frequently asked questions.</h2>
+
+        <div class="faq-columns">
+          <!-- Column 1 -->
+          <div class="faq-col">
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>What types of images are supported?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>Sketch-to-Space supports PNG, JPG, JPEG photos, scans, and architectural drawings. High-resolution photos taken straight-on under even lighting provide the cleanest OCR results.</p>
               </div>
             </div>
 
-            <details class="unverified-drawer">
-              <summary>
-                <span id="unverifiedSummaryText">Unverified labels (0)</span>
-              </summary>
-              <div id="unverifiedList" class="unverified-list"></div>
-            </details>
-          </div>
-        </div>
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>How does Sketch-to-Space handle unclear photos?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>When handwriting is ambiguous or smudged, our pipeline flags it as a low-confidence reading and suggests candidate fixes for your review. We never guess silently.</p>
+              </div>
+            </div>
 
-        <!-- Hard Limitations Note (Always Visible) -->
-        <div class="limitations-note">
-          <div class="limitations-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>Are the dimensions 100% accurate?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>AI extracts candidate numbers, but verification is executed with a deterministic mathematical solver. Dimension loops must satisfy linear equations before they are verified.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>Is my data processed locally?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>Yes. Sketch-to-Space operates on an offline-first architecture. Blueprints and sketches stay on your workstation and are never transmitted to third-party cloud APIs.</p>
+              </div>
+            </div>
           </div>
-          <div class="limitations-body">
-            <strong>Important Limitations:</strong>
-            Labels with no redundancy cannot be checked. Errors smaller than the wall allowance are not flagged. Two errors that cancel out are not detected. Real plans are read by a small local model, so unverified values need a human look.
+
+          <!-- Column 2 -->
+          <div class="faq-col">
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>What if the plan is not to scale?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>Sketch-to-Space reads written numerical annotations rather than relying solely on pixel rulers. As long as numbers are written, mathematical cross-checks will validate them.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>Can I edit dimensions manually?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>Yes. The inspection workspace allows you to accept ranked fix suggestions with one click or manually update values to immediately recalculate the entire dimension chain.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>Can I export the results?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>Yes. You can export a clean, corrected SVG layout along with comprehensive audit findings and room area tables directly from the application workspace.</p>
+              </div>
+            </div>
+
+            <div class="faq-item">
+              <button class="faq-trigger" aria-expanded="false">
+                <span>What are the current limitations?</span>
+                <svg class="chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+              <div class="faq-content">
+                <p>Labels with no redundancy cannot be checked. Errors smaller than wall allowances are not flagged. Unverified values are highlighted so a human reviewer can verify them.</p>
+              </div>
+            </div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
+
+    <!-- 9. Closing CTA Section -->
+    <section class="closing-cta-section" aria-labelledby="closingCtaTitle">
+      <div class="closing-cta-container">
+        <h2 id="closingCtaTitle" class="closing-headline">Give every drawing a second look.</h2>
+        <a href="/app.html" class="btn btn-primary btn-closing">
+          <span>Analyze Your First Floor Plan</span>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+        </a>
+      </div>
+    </section>
   </main>
 
-  <!-- Upload Dialog (Drop Zone) -->
-  <dialog id="uploadModal" class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Upload Floor Plan Sketch</h3>
-        <button id="closeUploadModalBtn" class="btn-close" aria-label="Close dialog">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="dropZone" class="drop-zone">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-          <p>Drag and drop a plan image, or click to browse</p>
-          <span class="file-hint">JPG, PNG, JPEG scans or photos</span>
-          <input type="file" id="fileInput" accept="image/*" hidden>
-        </div>
-        <div id="uploadStatusBox" class="info-callout" hidden>
-          <strong id="uploadStatusTitle"></strong>
-          <p id="uploadStatusDesc"></p>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="submitUploadBtn" class="btn btn-primary">Process with Gemma</button>
-        <button id="cancelUploadBtn" class="btn btn-ghost">Cancel</button>
-      </div>
-    </div>
-  </dialog>
 
-  <!-- How It Works Dialog -->
-  <dialog id="howItWorksModal" class="modal-dialog modal-wide">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>How Sketch-to-Space Works</h3>
-        <button id="closeHowItWorksBtn" class="btn-close" aria-label="Close dialog">&times;</button>
-      </div>
-      <div class="modal-body">
-        <p class="dialog-lead">The central architecture separates machine perception from mathematical verification: <strong>AI understands, code verifies.</strong></p>
 
-        <!-- Inline SVG Pipeline Flow Diagram -->
-        <div class="diagram-wrapper">
-          <svg viewBox="0 0 860 210" width="100%" height="auto" class="pipeline-diagram" aria-label="System architecture diagram">
-            <!-- Stage 1 -->
-            <rect x="20" y="30" width="160" height="120" rx="8" fill="#FFFFFF" stroke="#1F4E5F" stroke-width="2"/>
-            <text x="100" y="65" fill="#1F4E5F" font-size="14" font-weight="700" text-anchor="middle">1. Photo Input</text>
-            <text x="100" y="92" fill="#5B6675" font-size="11" text-anchor="middle">Raw phone photo</text>
-            <text x="100" y="112" fill="#5B6675" font-size="11" text-anchor="middle">or paper scan</text>
-            <text x="100" y="132" fill="#5B6675" font-size="10" text-anchor="middle">Local private storage</text>
-
-            <!-- Arrow 1 -->
-            <path d="M 180 90 L 220 90" stroke="#1F4E5F" stroke-width="2"/>
-
-            <!-- Stage 2 -->
-            <rect x="220" y="30" width="180" height="120" rx="8" fill="#FFFFFF" stroke="#1F4E5F" stroke-width="2"/>
-            <text x="310" y="65" fill="#1F4E5F" font-size="14" font-weight="700" text-anchor="middle">2. Perception (AI)</text>
-            <text x="310" y="90" fill="#5B6675" font-size="11" text-anchor="middle">Gemma 4 E4B vision</text>
-            <text x="310" y="110" fill="#5B6675" font-size="11" text-anchor="middle">+ PaddleOCR boxes</text>
-            <text x="310" y="132" fill="#5B6675" font-size="10" text-anchor="middle">Extracts numbers and labels</text>
-
-            <!-- Arrow 2 -->
-            <path d="M 400 90 L 440 90" stroke="#1F4E5F" stroke-width="2"/>
-
-            <!-- Stage 3 -->
-            <rect x="440" y="30" width="180" height="120" rx="8" fill="#FFFFFF" stroke="#2F7D4F" stroke-width="2"/>
-            <text x="530" y="65" fill="#266741" font-size="14" font-weight="700" text-anchor="middle">3. Solver (Code)</text>
-            <text x="530" y="90" fill="#5B6675" font-size="11" text-anchor="middle">Deterministic checks</text>
-            <text x="530" y="110" fill="#5B6675" font-size="11" text-anchor="middle">Wall allowance math</text>
-            <text x="530" y="132" fill="#5B6675" font-size="10" text-anchor="middle">Zero AI arithmetic</text>
-
-            <!-- Arrow 3 -->
-            <path d="M 620 90 L 660 90" stroke="#1F4E5F" stroke-width="2"/>
-
-            <!-- Stage 4 -->
-            <rect x="660" y="30" width="180" height="120" rx="8" fill="#FFFFFF" stroke="#1F4E5F" stroke-width="2"/>
-            <text x="750" y="65" fill="#1F4E5F" font-size="14" font-weight="700" text-anchor="middle">4. Human Decision</text>
-            <text x="750" y="90" fill="#5B6675" font-size="11" text-anchor="middle">Ranked fix suggestions</text>
-            <text x="750" y="110" fill="#5B6675" font-size="11" text-anchor="middle">Confirmed by you</text>
-            <text x="750" y="132" fill="#5B6675" font-size="10" text-anchor="middle">Corrected SVG export</text>
-          </svg>
-        </div>
-
-        <div class="dialog-feature-grid">
-          <div class="feat-box">
-            <h4>No Silent Edits</h4>
-            <p>The system never silently changes a number. It highlights contradictions and lets you decide.</p>
-          </div>
-          <div class="feat-box">
-            <h4>Wall Slack Formulas</h4>
-            <p>Interior walls carry physical thickness. Checks use capped formulas rather than assuming zero thickness.</p>
-          </div>
-          <div class="feat-box">
-            <h4>100% Offline</h4>
-            <p>Runs locally on your laptop without sending blueprint scans to third-party cloud APIs.</p>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button id="closeHowItWorksFooterBtn" class="btn btn-secondary">Close</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- Guided Tour Overlay Modal -->
-  <dialog id="tourModal" class="modal-dialog tour-modal">
-    <div class="modal-content">
-      <div class="tour-header">
-        <span id="tourStepBadge" class="badge badge-accent">Step 1 of 5</span>
-        <button id="closeTourBtn" class="btn-close" aria-label="Exit tour">&times;</button>
-      </div>
-      <div class="tour-body">
-        <h3 id="tourTitle" class="tour-title"></h3>
-        <p id="tourText" class="tour-desc"></p>
-      </div>
-      <div class="tour-footer">
-        <button id="tourBackBtn" class="btn btn-sm btn-ghost">Back</button>
-        <div class="tour-actions-right">
-          <button id="tourSkipBtn" class="btn btn-sm btn-outline">Skip Tour</button>
-          <button id="tourNextBtn" class="btn btn-sm btn-primary">Next</button>
-        </div>
-      </div>
-    </div>
-  </dialog>
-
-  <script src="app.js"></script>
+  <script src="landing.js"></script>
 </body>
 </html>
