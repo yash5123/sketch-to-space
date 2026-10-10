@@ -726,8 +726,7 @@ def _render_synthetic_svg(name: str, plan_data: dict) -> str:
         '</defs>',
         f'<rect width="{vb_w}" height="{vb_h}" fill="url(#grid)" />',
         # Title header
-        f'<text x="{margin_l}" y="42" fill="#1F4E5F" font-size="16" font-weight="700" letter-spacing="0.5">ARCHITECTURAL CAD SCHEMATIC - {plan_data["title"].upper()}</text>',
-        f'<text x="{margin_l}" y="64" fill="#5B6675" font-size="12">Verified Grid Architecture - Precision: ± 0.001 m - Local Coordinate Plane</text>',
+        f'<text x="{margin_l}" y="48" fill="#1F4E5F" font-size="16" font-weight="700" letter-spacing="0.5">ARCHITECTURAL CAD SCHEMATIC - {plan_data["title"].upper()}</text>',
     ]
 
     # Compute column X offsets
