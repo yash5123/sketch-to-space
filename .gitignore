@@ -3,22 +3,22 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
-
 # Virtual Environment
 venv/
 ENV/
 env/
-
 # IDE / OS files
 .vscode/
 .idea/
 Thumbs.db
 Desktop.ini
 .DS_Store
-
 # Temporary outputs & generated benchmarks
 results/
 synthetic/
 sketches/synth/
 *.patch
+.agents/
+answers/
+sketches/
 

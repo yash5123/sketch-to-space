@@ -331,7 +331,18 @@ flowchart TD
 }
 ```
 
-All dimensions are stored internally in one unit (inches) so that feet-inch and metric inputs share the same constraint system.
+All dimensions are stored internally in standard units (mm / inches) so that feet-inch and metric inputs share the same constraint system.
+
+### Bounding Box Convention
+
+All spatial bounding boxes across perception, reader, and verification modules follow one canonical convention:
+`Box(x0, y0, x1, y1)` in page pixels:
+- `x0`: left edge coordinate (minimum horizontal x)
+- `y0`: top edge coordinate (minimum vertical y)
+- `x1`: right edge coordinate (maximum horizontal x)
+- `y1`: bottom edge coordinate (maximum vertical y)
+
+Conversion from external OCR engines (such as PaddleOCR quad-point polygons) is performed strictly at the OCR boundary in `backend/ocr_engine.py`, ensuring consistent downstream processing across `backend/geometry.py`, `backend/reader.py`, and `backend/pipeline.py`.
 
 ---
 
@@ -505,4 +516,30 @@ The project itself is intended to be released as open source under a permissive 
 | Live-demo risk | Bad lighting, slow inference | Support uploads as well as live capture; pre-warmed model; small, reliable demo set |
 | Limited time in the final | Incomplete feature set | Strict core vs stretch separation; riskiest component tested first |
 | Existing similar tools | Claim of novelty challenged | Narrow the claim to dimension verification and correction; cite related work; update as needed |
+
+---
+
+## 21. Run the Demo UI
+
+The interactive instrument UI runs locally with zero external network requests and zero model downloads (served entirely from verified saved results and synthetic ground-truth files).
+
+### Quick Start (PowerShell)
+
+```powershell
+.\run_ui.ps1
+```
+
+Or manually:
+
+```powershell
+.\venv\Scripts\uvicorn.exe backend.app:app --host 127.0.0.1 --port 8000
+```
+
+Then open your browser to [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+### Key Features Demonstrated
+- **Interactive Visual Inspector**: Switch between original sketch photo with transcribed OCR bounding boxes, corrected CAD schematics, and side-by-side comparison.
+- **Ranked Suggestion Acceptance**: Confirming a ranked fix on Test 4 or Synth 008 immediately updates checksum calculations, resolves conflicts in real-time, and provides instant Undo.
+- **Offline & Private**: All verification algorithms run in code on your device without sending architectural plans to third-party APIs.
+
 

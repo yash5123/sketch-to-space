@@ -86,6 +86,8 @@ def extract_text_boxes(image_path: str) -> list[dict]:
     rec_boxes = page.get("rec_boxes", [])
     dt_polys = page.get("dt_polys", [])
 
+    from geometry import Box
+
     detections = []
     for idx, (txt, score) in enumerate(zip(rec_texts, rec_scores)):
         poly = dt_polys[idx] if idx < len(dt_polys) else []
@@ -98,11 +100,11 @@ def extract_text_boxes(image_path: str) -> list[dict]:
 
         if hasattr(box, "tolist"):
             box = box.tolist()
-        clean_box = [float(v) for v in box]
+        clean_box = Box.from_coords(box[0], box[1], box[2], box[3]) if len(box) == 4 else None
 
         # Clean string formatting
         clean_text = txt.strip()
-        if not clean_text:
+        if not clean_text or clean_box is None:
             continue
 
         detections.append({
@@ -239,11 +241,13 @@ def visualize_detections(
     img = Image.open(image_path).convert("RGB")
     draw = ImageDraw.Draw(img)
 
+    from geometry import Box
+
     for idx, d in enumerate(detections, 1):
-        box = d.get("box", [])
-        if len(box) != 4:
+        box = Box.from_any(d.get("box"))
+        if not box:
             continue
-        xmin, ymin, xmax, ymax = [int(v) for v in box]
+        xmin, ymin, xmax, ymax = int(box.x0), int(box.y0), int(box.x1), int(box.y1)
         txt = d.get("text", "")
         conf = d.get("confidence", 1.0) * 100
 

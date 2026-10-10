@@ -28,9 +28,9 @@ _SUFFIX_FACTOR = {"mm": 1.0, "cm": 10.0, "m": 1000.0}
 _SPLIT = re.compile(r"(?<=[\d'\"])\s*[xX\u00d7]\s*(?=\d)")
 
 # Feet-inches patterns, tried left to right:
-#   1) feet'[-]inches[half]["?]   — e.g. 8'7", 8'7 1/2", 8'-7", 8'7 (missing ")
-#   2) feet'                      — e.g. 10'
-#   3) inches[half]" or half"     — e.g. 7", 4 1/2", 1/2"
+#   1) feet'[-]inches[half]["?]   - e.g. 8'7", 8'7 1/2", 8'-7", 8'7 (missing ")
+#   2) feet'                      - e.g. 10'
+#   3) inches[half]" or half"     - e.g. 7", 4 1/2", 1/2"
 _FEET_INCH = re.compile(
     r"(?P<feet>\d+)\s*(?:'\s*-?|-)\s*(?P<inches>\d+)(?P<half>\s*(?:1/2|\u00bd))?\s*\"?"
     r"|"

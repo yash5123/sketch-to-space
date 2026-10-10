@@ -32,7 +32,7 @@ THINK = _flag("READER_THINK", False)
 # A long value avoids the slow cold start during a demo.
 KEEP_ALIVE = os.getenv("READER_KEEP_ALIVE", "30m")
 
-# Context window. Larger values use more VRAM, so keep it modest on 6 GB.
+# Context window. Larger values use more VRAM, so keep it modest.
 NUM_CTX = int(os.getenv("READER_NUM_CTX", "4096"))
 
 # Upper limit on generated tokens per request (keeps replies short and fast).

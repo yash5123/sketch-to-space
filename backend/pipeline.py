@@ -20,7 +20,9 @@ from typing import Any, Optional
 
 import checks
 import config
+from geometry import Box
 from parse import format_mm, infer_unit, parse_label, _normalise
+from reader import is_valid_chain
 
 
 WALL_MAX_MM = 230.0  # Hard cap: 9 inches / 230 mm per interior wall
@@ -30,8 +32,20 @@ def _is_unit_ambiguous(text: str, unit: str, parsed_mms: list[float]) -> bool:
     """Check if label has ambiguous or conflicting unit evidence."""
     if not parsed_mms:
         return True
-    norm = _normalise(text)
-    has_imperial_marks = "'" in norm or '"' in norm
+    norm = _normalise(text).strip()
+
+    # 1. Bare number with no unit symbols at all (e.g. "8", "12", "14")
+    if re.match(r"^\d+$", norm):
+        return True
+    # Bare 2D room (e.g. "8x5", "10x12")
+    if re.match(r"^\d+\s*[xX×]\s*\d+$", norm):
+        return True
+
+    # 2. Asymmetric feet x inches (e.g. 7'x4" or 7'x5" where 2nd value has " without ')
+    if re.search(r"\d+['′]\s*[xX×]\s*\d+[\"″](?!['′])", norm):
+        return True
+
+    has_imperial_marks = "'" in norm or '"' in norm or "′" in norm or "″" in norm
     has_metric_decimal = bool(re.search(r"\d+\.\d+", norm))
     if unit == "feet_inches" and has_metric_decimal and not has_imperial_marks:
         return True
@@ -57,9 +71,11 @@ def _verify_chain_geometry(
     ov_box = overall_rec.get("ocr_box")
     part_boxes = [p.get("ocr_box") for p in part_recs]
 
-    def _box_coords(box: list[float]):
-        ymin, xmin, ymax, xmax = box[0], box[1], box[2], box[3]
-        return xmin, xmax, ymin, ymax, (xmin + xmax) / 2.0, (ymin + ymax) / 2.0
+    def _box_coords(box: Any):
+        b = Box.from_any(box)
+        if not b:
+            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+        return b.x0, b.x1, b.y0, b.y1, b.xc, b.yc
 
     # For horizontal chain: all labels must have known bboxes with aligned y-centers
     if orientation == "horizontal":
@@ -253,7 +269,7 @@ def run_plan(
         label_records.append(rec)
 
         if len(mms) == 1:
-            labels_dict[lid] = checks.Label(lid, raw_text, unit, mm=mms[0])
+            labels_dict[lid] = checks.Label(lid, raw_text, unit, mm=mms[0], support=support, ocr_verified=ocr_v)
 
     # -------------------------------------------------------------------------
     # 2. Build constraints with OCR bbox geometric verification
@@ -295,6 +311,8 @@ def run_plan(
             lo = -tol
             hi = cap_mm + tol
             formula = f"wall_allowance: 0 .. ({parts_count}-1) * {wall_max:.1f} mm (cap {cap_mm:.1f} mm / {format_mm(cap_mm, unit)}) ± {tol:.1f} mm"
+
+        min_det_mm = round(min(abs(lo), abs(hi)), 1)
         return {
             "formula": formula,
             "slack_cap_mm": round(cap_mm, 1),
@@ -303,65 +321,134 @@ def run_plan(
             "lo_mm": round(lo, 1),
             "hi_mm": round(hi, 1),
             "num_walls": num_walls,
+            "smallest_detectable_error_mm": min_det_mm,
+            "smallest_detectable_error_formatted": format_mm(min_det_mm, unit),
         }
+
+    # Count box frequencies across all labels to ensure box uniqueness
+    box_counts = {}
+    for r in label_records:
+        b = r.get("ocr_box")
+        if b:
+            box_counts[tuple(b)] = box_counts.get(tuple(b), 0) + 1
+
+    def is_unique_in_page_box(box: Optional[list[float]]) -> bool:
+        if not box:
+            return False
+        return box_counts.get(tuple(box), 0) == 1
+
+    def verify_edge_chain(chain_recs: list[dict], side_name: str) -> tuple[bool, str, Optional[dict], list[dict]]:
+        """Verify chain membership:
+          - is_valid_chain(values) imported from reader.py (>= 3 values, max >= 1.5x second max)
+          - unique in-page box for overall
+          - at least 60% of segments have unique in-page boxes
+        """
+        if len(chain_recs) < 3:
+            return False, f"chain has fewer than 3 labels ({len(chain_recs)})", None, []
+
+        vals = [r["parsed_mm"][0] for r in chain_recs if r.get("parsed_mm") and len(r["parsed_mm"]) == 1]
+        if not is_valid_chain(vals):
+            return False, f"fails shared is_valid_chain rule (values={vals})", None, []
+
+        ov_idx, seg_indices = _find_chain_overall(chain_recs, unit, tol_mm)
+        if ov_idx is None or len(seg_indices) < 2:
+            return False, "could not identify overall and at least 2 segments", None, []
+
+        ov_rec = chain_recs[ov_idx]
+        seg_recs = [chain_recs[i] for i in seg_indices]
+
+        # Overall must have a unique in-page box
+        if not is_unique_in_page_box(ov_rec.get("ocr_box")):
+            return False, f"overall '{ov_rec['text_as_written']}' lacks a unique in-page OCR box", ov_rec, seg_recs
+
+        # At least 60% of segments must have unique in-page boxes
+        unique_seg_count = sum(1 for s in seg_recs if is_unique_in_page_box(s.get("ocr_box")))
+        seg_ratio = unique_seg_count / len(seg_recs) if seg_recs else 0.0
+        if seg_ratio < 0.60:
+            return False, f"only {unique_seg_count}/{len(seg_recs)} segments ({seg_ratio*100:.1f}% < 60%) have unique in-page boxes", ov_rec, seg_recs
+
+        # Invariant: box positions are monotonic in chain_index
+        segs_with_boxes = [s for s in sorted(seg_recs, key=lambda x: x.get("chain_index", 0)) if s.get("ocr_box")]
+        if len(segs_with_boxes) >= 2:
+            if side_name in ("left", "right") or ov_rec.get("direction") == "vertical":
+                coords = [Box.from_any(s["ocr_box"]).yc for s in segs_with_boxes]
+            else:
+                coords = [Box.from_any(s["ocr_box"]).xc for s in segs_with_boxes]
+
+            is_inc = all(coords[i] < coords[i + 1] for i in range(len(coords) - 1))
+            is_dec = all(coords[i] > coords[i + 1] for i in range(len(coords) - 1))
+            if not (is_inc or is_dec):
+                return False, f"box positions are not monotonic in chain_index (coords={coords})", ov_rec, seg_recs
+
+        return True, f"corroborated: unique overall box, {unique_seg_count}/{len(seg_recs)} ({seg_ratio*100:.1f}%) unique segment boxes, and monotonic positions", ov_rec, seg_recs
 
     # Left Chain
     left_items = plan.get("left_chain", [])
     if left_items:
         left_lids = match_chain_to_lids(left_items, "left")
         left_recs = [label_records[int(i.split('_')[1])] for i in left_lids]
-        ov_idx, seg_indices = _find_chain_overall(left_recs, unit, tol_mm)
-        if ov_idx is not None and len(seg_indices) >= 2:
-            ov_rec = left_recs[ov_idx]
-            seg_recs = [left_recs[i] for i in seg_indices]
-            valid_geom, reason = _verify_chain_geometry(ov_rec, seg_recs, "vertical")
-            if valid_geom:
-                slack = compute_slack_info(len(seg_recs), tol_mm, wall_mm, wall_max_mm)
-                c = checks.Constraint("left_chain", ov_rec["id"], [s["id"] for s in seg_recs], slack["lo_mm"], slack["hi_mm"], "chain")
-                constraints.append(c)
-                overall_sides["left"] = ov_rec["id"]
-                constraint_metadata.append({
-                    "id": c.id,
-                    "kind": c.kind,
-                    "total_label": ov_rec["text_as_written"],
-                    "total_box": ov_rec.get("ocr_box"),
-                    "part_labels": [s["text_as_written"] for s in seg_recs],
-                    "part_boxes": [s.get("ocr_box") for s in seg_recs],
-                    "slack": slack,
-                    "geometry_verification": reason,
-                })
-            else:
-                for s in seg_recs:
-                    s["status"] = "unverified"
+        valid_chain, reason, ov_rec, seg_recs = verify_edge_chain(left_recs, "left")
+        if valid_chain:
+            slack = compute_slack_info(len(seg_recs), tol_mm, wall_mm, wall_max_mm)
+            c = checks.Constraint("left_chain", ov_rec["id"], [s["id"] for s in seg_recs], slack["lo_mm"], slack["hi_mm"], "chain")
+            constraints.append(c)
+            overall_sides["left"] = ov_rec["id"]
+            for s in seg_recs:
+                if s["status"] != "unit_ambiguous":
+                    s["status"] = "verified"
+            if ov_rec["status"] != "unit_ambiguous":
+                ov_rec["status"] = "verified"
+            constraint_metadata.append({
+                "id": c.id,
+                "kind": c.kind,
+                "total_id": ov_rec["id"],
+                "part_ids": [s["id"] for s in seg_recs],
+                "total_label": ov_rec["text_as_written"],
+                "total_box": ov_rec.get("ocr_box"),
+                "part_labels": [s["text_as_written"] for s in seg_recs],
+                "part_boxes": [s.get("ocr_box") for s in seg_recs],
+                "lo_mm": slack["lo_mm"],
+                "hi_mm": slack["hi_mm"],
+                "slack": slack,
+                "geometry_verification": reason,
+            })
+        else:
+            for r in left_recs:
+                r["status"] = "membership uncertain"
 
     # Right Chain
     right_items = plan.get("right_chain", [])
     if right_items:
         right_lids = match_chain_to_lids(right_items, "right")
         right_recs = [label_records[int(i.split('_')[1])] for i in right_lids]
-        ov_idx, seg_indices = _find_chain_overall(right_recs, unit, tol_mm)
-        if ov_idx is not None and len(seg_indices) >= 2:
-            ov_rec = right_recs[ov_idx]
-            seg_recs = [right_recs[i] for i in seg_indices]
-            valid_geom, reason = _verify_chain_geometry(ov_rec, seg_recs, "vertical")
-            if valid_geom:
-                slack = compute_slack_info(len(seg_recs), tol_mm, wall_mm, wall_max_mm)
-                c = checks.Constraint("right_chain", ov_rec["id"], [s["id"] for s in seg_recs], slack["lo_mm"], slack["hi_mm"], "chain")
-                constraints.append(c)
-                overall_sides["right"] = ov_rec["id"]
-                constraint_metadata.append({
-                    "id": c.id,
-                    "kind": c.kind,
-                    "total_label": ov_rec["text_as_written"],
-                    "total_box": ov_rec.get("ocr_box"),
-                    "part_labels": [s["text_as_written"] for s in seg_recs],
-                    "part_boxes": [s.get("ocr_box") for s in seg_recs],
-                    "slack": slack,
-                    "geometry_verification": reason,
-                })
-            else:
-                for s in seg_recs:
-                    s["status"] = "unverified"
+        valid_chain, reason, ov_rec, seg_recs = verify_edge_chain(right_recs, "right")
+        if valid_chain:
+            slack = compute_slack_info(len(seg_recs), tol_mm, wall_mm, wall_max_mm)
+            c = checks.Constraint("right_chain", ov_rec["id"], [s["id"] for s in seg_recs], slack["lo_mm"], slack["hi_mm"], "chain")
+            constraints.append(c)
+            overall_sides["right"] = ov_rec["id"]
+            for s in seg_recs:
+                if s["status"] != "unit_ambiguous":
+                    s["status"] = "verified"
+            if ov_rec["status"] != "unit_ambiguous":
+                ov_rec["status"] = "verified"
+            constraint_metadata.append({
+                "id": c.id,
+                "kind": c.kind,
+                "total_id": ov_rec["id"],
+                "part_ids": [s["id"] for s in seg_recs],
+                "total_label": ov_rec["text_as_written"],
+                "total_box": ov_rec.get("ocr_box"),
+                "part_labels": [s["text_as_written"] for s in seg_recs],
+                "part_boxes": [s.get("ocr_box") for s in seg_recs],
+                "lo_mm": slack["lo_mm"],
+                "hi_mm": slack["hi_mm"],
+                "slack": slack,
+                "geometry_verification": reason,
+            })
+        else:
+            for r in right_recs:
+                r["status"] = "membership uncertain"
 
     # Left = Right overall height equality
     if "left" in overall_sides and "right" in overall_sides:
@@ -522,8 +609,22 @@ def run_plan(
         gap_sign = "+" if gap >= 0 else "-"
         gap_str = f"{gap_sign}{gap_fmt}"
 
+        num_walls = max(0, len(c_obj.parts) - 1)
+        implied_thickness_mm = round(gap / num_walls, 1) if num_walls > 0 else 0.0
+        implied_thickness_fmt = f"{format_mm(abs(implied_thickness_mm), unit)} per wall" if num_walls > 0 else "N/A"
+
+        if c_obj.lo_mm <= gap <= c_obj.hi_mm:
+            smallest_err_mm = round(min(c_obj.hi_mm - gap, gap - c_obj.lo_mm), 1)
+        else:
+            smallest_err_mm = 0.0
+        smallest_err_fmt = format_mm(smallest_err_mm, unit)
+
         c_meta["gap_mm"] = round(gap, 1)
         c_meta["gap_formatted"] = gap_str
+        c_meta["implied_thickness_per_wall_mm"] = implied_thickness_mm
+        c_meta["implied_thickness_per_wall_formatted"] = implied_thickness_fmt
+        c_meta["smallest_detectable_error_mm"] = smallest_err_mm
+        c_meta["smallest_detectable_error_formatted"] = smallest_err_fmt
 
         if cid in viol_cids:
             v = viol_cids[cid]
@@ -537,13 +638,27 @@ def run_plan(
     # 4. Deterministic room area computation & envelope comparison
     # -------------------------------------------------------------------------
     room_areas: list[dict] = []
+    seen_room_keys: set[tuple] = set()
+    wd_pair_count = 0
     sum_of_rooms_read_sq_ft = 0.0
     sum_of_rooms_read_sq_m = 0.0
 
     for rec in label_records:
-        if rec["kind"] == "room_size":
+        if rec["kind"] == "room_size" or "x" in rec.get("text_as_written", ""):
             mms = rec["parsed_mm"]
+            app = str(rec.get("applies_to", "")).strip().lower()
+            pos = str(rec.get("position", "")).strip().lower()
+
             if len(mms) == 2:
+                # Dedupe key = size AND applies_to AND position cell
+                size_key = tuple(sorted(round(v, 1) for v in mms))
+                dedupe_key = (size_key, app, pos)
+                if dedupe_key in seen_room_keys:
+                    continue
+
+                seen_room_keys.add(dedupe_key)
+                wd_pair_count += 1
+
                 w_mm, d_mm = mms[0], mms[1]
                 w_ft = w_mm / 304.8
                 d_ft = d_mm / 304.8
@@ -577,23 +692,59 @@ def run_plan(
                     "area_sq_m": 0.0,
                 })
 
-    # Envelope calculation (overall width x overall height)
+    has_wd_pairs = wd_pair_count > 0
+    total_area_sq_ft_out: Any = round(sum_of_rooms_read_sq_ft, 1) if has_wd_pairs else "N/A"
+    total_area_sq_m_out: Any = round(sum_of_rooms_read_sq_m, 1) if has_wd_pairs else "N/A"
+
+    # Stated envelope: overall width x overall height
     ov_w = next((r for r in label_records if r["kind"] == "overall" and ("width" in r["applies_to"].lower() or r["direction"] == "horizontal")), None)
     ov_h = next((r for r in label_records if r["kind"] == "overall" and ("height" in r["applies_to"].lower() or r["direction"] == "vertical" or r.get("chain_side"))), None)
 
-    envelope_sq_ft = 0.0
-    envelope_sq_m = 0.0
-    envelope_ratio_pct = 0.0
-    envelope_dims_formatted = ""
+    stated_envelope_sq_ft = 0.0
+    stated_envelope_sq_m = 0.0
+    stated_envelope_ratio_pct: Any = "N/A"
+    stated_envelope_dims_formatted = ""
 
-    if ov_w and ov_h and ov_w["parsed_mm"] and ov_h["parsed_mm"]:
-        w_mm = ov_w["parsed_mm"][0]
-        h_mm = ov_h["parsed_mm"][0]
-        envelope_sq_ft = round((w_mm / 304.8) * (h_mm / 304.8), 2)
-        envelope_sq_m = round((w_mm / 1000.0) * (h_mm / 1000.0), 2)
-        envelope_dims_formatted = f"{ov_w['text_as_written']} x {ov_h['text_as_written']}"
-        if envelope_sq_ft > 0:
-            envelope_ratio_pct = round((sum_of_rooms_read_sq_ft / envelope_sq_ft) * 100.0, 1)
+    w_mm = ov_w["parsed_mm"][0] if (ov_w and ov_w.get("parsed_mm")) else 0.0
+    h_mm = ov_h["parsed_mm"][0] if (ov_h and ov_h.get("parsed_mm")) else 0.0
+
+    if w_mm > 0 and h_mm > 0:
+        stated_envelope_sq_ft = round((w_mm / 304.8) * (h_mm / 304.8), 2)
+        stated_envelope_sq_m = round((w_mm / 1000.0) * (h_mm / 1000.0), 2)
+        stated_envelope_dims_formatted = f"{ov_w['text_as_written']} x {ov_h['text_as_written']}"
+        if has_wd_pairs and stated_envelope_sq_ft > 0:
+            stated_envelope_ratio_pct = round((sum_of_rooms_read_sq_ft / stated_envelope_sq_ft) * 100.0, 1)
+
+    # Chain-sum envelope
+    chain_w_mm = w_mm
+    for c_meta in constraint_metadata:
+        if c_meta["id"].startswith("width_overall") or c_meta["id"] == "top_chain":
+            parts_mms = [values.get(pid, 0.0) for pid in c_meta["part_ids"]]
+            if parts_mms:
+                chain_w_mm = sum(parts_mms)
+
+    chain_h_mm = h_mm
+    for c_meta in constraint_metadata:
+        if c_meta["id"] in ("left_chain", "right_chain"):
+            parts_mms = [values.get(pid, 0.0) for pid in c_meta["part_ids"]]
+            if parts_mms:
+                chain_h_mm = sum(parts_mms)
+
+    chain_sum_envelope_sq_ft = round((chain_w_mm / 304.8) * (chain_h_mm / 304.8), 2) if (chain_w_mm and chain_h_mm) else stated_envelope_sq_ft
+    chain_sum_envelope_sq_m = round((chain_w_mm / 1000.0) * (chain_h_mm / 1000.0), 2) if (chain_w_mm and chain_h_mm) else stated_envelope_sq_m
+    chain_sum_envelope_ratio_pct: Any = "N/A"
+    if has_wd_pairs and chain_sum_envelope_sq_ft > 0:
+        chain_sum_envelope_ratio_pct = round((sum_of_rooms_read_sq_ft / chain_sum_envelope_sq_ft) * 100.0, 1)
+
+    envelope_flag = "within envelope"
+    if has_wd_pairs:
+        exceeds = False
+        if isinstance(stated_envelope_ratio_pct, (int, float)) and stated_envelope_ratio_pct > 100.0:
+            exceeds = True
+        if isinstance(chain_sum_envelope_ratio_pct, (int, float)) and chain_sum_envelope_ratio_pct > 100.0:
+            exceeds = True
+        if exceeds:
+            envelope_flag = "sum of rooms exceeds envelope (>100%)"
 
     # -------------------------------------------------------------------------
     # 5. List uncheckable values (no redundancy on the plan)
@@ -619,6 +770,7 @@ def run_plan(
     coverage_pct = round((covered_labels_count / total_labels * 100.0), 1) if total_labels else 0.0
     verified_count = sum(1 for r in label_records if r["status"] == "verified")
     unverified_count = sum(1 for r in label_records if r["status"] == "unverified")
+    uncertain_count = sum(1 for r in label_records if r["status"] == "membership uncertain")
     ambiguous_count = sum(1 for r in label_records if r["status"] == "unit_ambiguous")
 
     return {
@@ -629,14 +781,21 @@ def run_plan(
         "constraints": constraint_metadata,
         "conflicts": conflicts,
         "room_areas": room_areas,
-        "sum_of_rooms_read_sq_ft": round(sum_of_rooms_read_sq_ft, 2),
-        "sum_of_rooms_read_sq_m": round(sum_of_rooms_read_sq_m, 2),
-        "total_area_sq_ft": round(sum_of_rooms_read_sq_ft, 2),
-        "total_area_sq_m": round(sum_of_rooms_read_sq_m, 2),
-        "envelope_sq_ft": envelope_sq_ft,
-        "envelope_sq_m": envelope_sq_m,
-        "envelope_dims_formatted": envelope_dims_formatted,
-        "envelope_ratio_pct": envelope_ratio_pct,
+        "sum_of_rooms_read_sq_ft": total_area_sq_ft_out,
+        "sum_of_rooms_read_sq_m": total_area_sq_m_out,
+        "total_area_sq_ft": total_area_sq_ft_out,
+        "total_area_sq_m": total_area_sq_m_out,
+        "stated_envelope_sq_ft": stated_envelope_sq_ft,
+        "stated_envelope_sq_m": stated_envelope_sq_m,
+        "stated_envelope_ratio_pct": stated_envelope_ratio_pct,
+        "chain_sum_envelope_sq_ft": chain_sum_envelope_sq_ft,
+        "chain_sum_envelope_sq_m": chain_sum_envelope_sq_m,
+        "chain_sum_envelope_ratio_pct": chain_sum_envelope_ratio_pct,
+        "envelope_flag": envelope_flag,
+        "envelope_sq_ft": stated_envelope_sq_ft,
+        "envelope_sq_m": stated_envelope_sq_m,
+        "envelope_dims_formatted": stated_envelope_dims_formatted,
+        "envelope_ratio_pct": stated_envelope_ratio_pct,
         "uncheckable_values": uncheckable_values,
         "coverage": {
             "labels_in_constraints": covered_labels_count,
@@ -649,6 +808,7 @@ def run_plan(
             "total_labels": total_labels,
             "verified_count": verified_count,
             "unverified_count": unverified_count,
+            "membership_uncertain_count": uncertain_count,
             "unit_ambiguous_count": ambiguous_count,
             "constraints_count": len(constraints),
             "conflicts_count": len(conflicts),

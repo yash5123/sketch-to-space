@@ -37,6 +37,8 @@ class Label:
     text: str
     unit: str
     mm: Optional[float] = None
+    support: int = 1
+    ocr_verified: bool = False
 
     def __post_init__(self):
         if self.mm is None:
@@ -75,6 +77,10 @@ class Suggestion:
     remaining_excess_mm: float = 0.0
     status: str = "complete"
     hypothesis: str = "candidate_edit"
+    support: int = 1
+    ocr_verified: bool = False
+    details: str = ""
+    identical_labels: list[str] = field(default_factory=list)
 
 
 def chain_constraint(cid, total, parts, tol_mm, wall_mm=None, wall_max_mm=230.0) -> Constraint:
@@ -226,54 +232,92 @@ def suggest(labels: dict[str, Label], constraints: list[Constraint], max_results
                                         hypothesis="overall_is_wrong"
                                     ))
 
-    # 2. Candidate digit/formatting edits
+    # 2. Candidate digit/formatting edits with collapsing of identical-value labels in one chain
+    suspect_groups: dict[str, list[str]] = {}
     for label_id in suspects:
         label = labels.get(label_id)
         if label is None or label.mm is None:
             continue
-        for new_text, cost in candidate_edits(label.text, label.unit, confusions):
+        suspect_groups.setdefault(label.text, []).append(label_id)
+
+    for txt, lids in suspect_groups.items():
+        rep_id = lids[0]
+        rep_label = labels[rep_id]
+        group_supports = [labels[i].support for i in lids if i in labels]
+        has_ocr = any(labels[i].ocr_verified for i in lids if i in labels)
+        min_sup = min(group_supports) if group_supports else 1
+
+        if len(lids) > 1:
+            sup_strs = [
+                f"{i} (sup {labels[i].support}{', OCR' if labels[i].ocr_verified else ''})"
+                for i in lids if i in labels
+            ]
+            details = f"one of {len(lids)} identical '{txt}' labels: {', '.join(sup_strs)}"
+        else:
+            details = f"{rep_id} (sup {rep_label.support}{', OCR' if rep_label.ocr_verified else ''})"
+
+        for new_text, cost in candidate_edits(txt, rep_label.unit, confusions):
             try:
-                new_values = parse_label(new_text, label.unit)
+                new_values = parse_label(new_text, rep_label.unit)
             except Exception:
                 continue
             if len(new_values) != 1:
                 continue
-            key = (label_id, new_text)
+            key = (txt, new_text)
             if key in seen:
                 continue
             trial = dict(values)
-            trial[label_id] = new_values[0]
+            trial[rep_id] = new_values[0]
             trial_viols = violations(trial, constraints)
             rem_viols = len(trial_viols)
             rem_excess = sum(v.excess_mm for v in trial_viols)
 
+            # Check if fix only works by using upper half of wall allowance
+            is_weak = False
+            for c in constraints:
+                if c.kind == "chain" and (rep_id == c.total or rep_id in c.parts):
+                    if c.total in trial and all(p in trial for p in c.parts):
+                        gap = trial[c.total] - sum(trial[p] for p in c.parts)
+                        # Wall allowance: if gap > 0.5 * c.hi_mm
+                        if c.hi_mm > 0 and gap > 0.5 * c.hi_mm:
+                            is_weak = True
+                            break
+
             if rem_viols < len(base) or rem_excess < base_excess - 50.0:
                 seen.add(key)
-                status = "complete" if rem_viols == 0 else "partial"
+                if rem_viols == 0:
+                    status = "weak" if is_weak else "complete"
+                else:
+                    status = "partial"
+                det_text = details
+                if is_weak:
+                    det_text = (det_text + "; " if det_text else "") + "weak: uses upper half of wall allowance"
+
                 results.append(Suggestion(
-                    label_id, label.text, new_text, rem_viols, cost,
-                    abs(new_values[0] - label.mm),
+                    rep_id, txt, new_text, rem_viols, cost,
+                    abs(new_values[0] - rep_label.mm),
                     remaining_excess_mm=round(rem_excess, 1),
                     status=status,
-                    hypothesis="digit_confusion"
+                    hypothesis="digit_confusion",
+                    support=min_sup,
+                    ocr_verified=has_ocr,
+                    details=det_text,
+                    identical_labels=lids,
                 ))
 
-    # Deduplicate tied edits & sort
-    results.sort(key=lambda s: (s.remaining_violations, s.cost, s.remaining_excess_mm, s.delta_mm, s.label_id))
+    # Tie-break: zero violations, non-weak before weak, cost, support (fewer passes / no OCR first)
+    results.sort(key=lambda s: (
+        s.remaining_violations,
+        1 if s.status == "weak" else 0,
+        s.cost,
+        1 if s.ocr_verified else 0,
+        s.support,
+        s.remaining_excess_mm,
+        s.delta_mm,
+        s.label_id,
+    ))
 
-    deduped_results: list[Suggestion] = []
-    seen_digit_edits = set()
-    for s in results:
-        if s.hypothesis == "overall_is_wrong":
-            deduped_results.append(s)
-            continue
-        sig = (s.old_text, s.new_text, s.cost, s.remaining_violations, round(s.remaining_excess_mm, 1))
-        if sig in seen_digit_edits:
-            continue
-        seen_digit_edits.add(sig)
-        deduped_results.append(s)
-
-    return deduped_results[:max_results]
+    return results[:max_results]
 
 
 # ---------------------------------------------------------------------------

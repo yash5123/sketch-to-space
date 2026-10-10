@@ -218,6 +218,66 @@ def _eval_chain_sum(mms: list[float], tolerance_mm: float = config.CHAIN_TOLERAN
     return False, total_seg, overall
 
 
+def is_valid_chain(values: list[float]) -> bool:
+    """A valid chain has at least 3 values and the largest is at least 1.5x the second largest."""
+    if len(values) < 3:
+        return False
+    sorted_vals = sorted(values)
+    return sorted_vals[-1] >= 1.5 * sorted_vals[-2]
+
+
+def map_strip_box_to_page(
+    box_strip: Any,
+    side: str,
+    orientation: str,
+    strip_w: int,
+    strip_h: int,
+    crop_x0: int,
+    crop_y0: int,
+    scale: float = 2.0,
+) -> "Box":
+    """Map a bounding box from local rotated/scaled strip coordinates to full page coordinates.
+
+    Strip box format: Box(x0, y0, x1, y1) in local strip pixels.
+    In PIL coordinate space:
+      - CCW (rotate 90): u = y_strip * scale, v = (W_strip - x_strip) * scale
+        Inverse: y_strip = u / scale, x_strip = W_strip - (v / scale)
+      - CW (rotate -90): u = (H_strip - y_strip) * scale, v = x_strip * scale
+        Inverse: x_strip = v / scale, y_strip = H_strip - (u / scale)
+
+    Returns canonical Box(x0, y0, x1, y1) in page pixels.
+    """
+    from geometry import Box
+
+    b = Box.from_any(box_strip)
+    if b is None:
+        return None
+    u0, v0, u1, v1 = b.x0, b.y0, b.x1, b.y1
+
+    if orientation.lower() == "ccw":
+        y0_strip = u0 / scale
+        y1_strip = u1 / scale
+        x0_strip = strip_w - (v1 / scale)
+        x1_strip = strip_w - (v0 / scale)
+    elif orientation.lower() == "cw":
+        x0_strip = v0 / scale
+        x1_strip = v1 / scale
+        y0_strip = strip_h - (u1 / scale)
+        y1_strip = strip_h - (u0 / scale)
+    else:
+        x0_strip = u0 / scale
+        x1_strip = u1 / scale
+        y0_strip = v0 / scale
+        y1_strip = v1 / scale
+
+    page_xmin = min(x0_strip, x1_strip) + crop_x0
+    page_xmax = max(x0_strip, x1_strip) + crop_x0
+    page_ymin = min(y0_strip, y1_strip) + crop_y0
+    page_ymax = max(y0_strip, y1_strip) + crop_y0
+
+    return Box.from_coords(page_xmin, page_ymin, page_xmax, page_ymax)
+
+
 def _has_multiple_dims(text: str) -> bool:
     """Check if a string contains multiple joined dimensions."""
     norm = _normalise(text)
@@ -570,23 +630,26 @@ def merge_passes(
                 d["mms"] = []
 
     claimed_dets: set[int] = set()
+    from geometry import Box
+    page_w = max((Box.from_any(d["box"]).x1 for d in ocr_dets if d.get("box")), default=1000.0)
 
-    def match_item_to_ocr(item: dict) -> Optional[dict]:
+    def match_item_to_ocr(item: dict, side: Optional[str] = None) -> Optional[dict]:
         if not ocr_dets:
             return None
         txt = item.get("text_as_written", "")
         from ocr_engine import find_matching_ocr_boxes
-        # First try unclaimed boxes
-        avail = [d for d in ocr_dets if d["idx"] not in claimed_dets]
+        # Strict: only unclaimed boxes to guarantee uniqueness
+        avail = [d for d in ocr_dets if d["idx"] not in claimed_dets and d.get("box")]
+        if side == "left":
+            avail = [d for d in avail if Box.from_any(d["box"]).xc < 0.35 * page_w]
+        elif side == "right":
+            avail = [d for d in avail if Box.from_any(d["box"]).xc > 0.65 * page_w]
+
         m = find_matching_ocr_boxes(txt, avail, unit)
         if m:
             m.sort(key=lambda x: x["confidence"], reverse=True)
             return m[0]
-        # Fallback to all boxes
-        all_m = find_matching_ocr_boxes(txt, ocr_dets, unit)
-        if all_m:
-            all_m.sort(key=lambda x: x["confidence"], reverse=True)
-            return all_m[0]
+        # Never fall back to already-claimed boxes; labels without unique boxes remain None
         return None
 
     registry: list[dict] = []
@@ -603,7 +666,7 @@ def merge_passes(
         else:
             src = "E_left"
         it["sources"] = [src]
-        det = match_item_to_ocr(it)
+        det = match_item_to_ocr(it, side="left")
         if det:
             it["ocr_verified"] = True
             it["ocr_box"] = det["box"]
@@ -622,7 +685,7 @@ def merge_passes(
         else:
             src = "E_right"
         it["sources"] = [src]
-        det = match_item_to_ocr(it)
+        det = match_item_to_ocr(it, side="right")
         if det:
             it["ocr_verified"] = True
             it["ocr_box"] = det["box"]
@@ -1152,6 +1215,7 @@ def main():
         print(f"  Wall-clock time   : {wall_seconds:.2f} s")
         if total_vram > 0:
             print(f"  GPU Peak VRAM used: {peak_vram:.1f} MB / {total_vram:.1f} MB ({peak_vram / total_vram * 100:.1f}%)")
+            print(f"  GPU VRAM Total    : {total_vram:.1f} MB (queried via nvidia-smi)")
         else:
             print("  GPU VRAM          : nvidia-smi not detected or GPU inactive")
         print("=" * 60 + "\n")
