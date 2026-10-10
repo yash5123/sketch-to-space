@@ -1,0 +1,14 @@
+requests
+pillow
+numpy
+opencv-python
+shapely
+networkx
+ortools
+fastapi
+uvicorn
+pydantic
+python-multipart
+pytest
+paddlepaddle
+paddleocr
