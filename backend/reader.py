@@ -1018,12 +1018,82 @@ def chain_report(plan: dict) -> dict:
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
+# Timing and VRAM Profiling Helper
+# ---------------------------------------------------------------------------
+
+def _query_vram() -> dict:
+    """Query current GPU VRAM utilization via nvidia-smi."""
+    import subprocess
+    try:
+        res = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.used,memory.total,utilization.gpu", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        if res.returncode == 0:
+            lines = res.stdout.strip().split("\n")
+            if lines and lines[0]:
+                parts = [p.strip() for p in lines[0].split(",")]
+                return {
+                    "vram_used_mb": float(parts[0]),
+                    "vram_total_mb": float(parts[1]),
+                    "gpu_util_pct": float(parts[2]) if len(parts) > 2 else 0.0,
+                }
+    except Exception:
+        pass
+    return {}
+
+
+class VRAMSampler:
+    """Samples nvidia-smi periodically during execution to capture true peak VRAM usage."""
+    def __init__(self, interval_sec: float = 0.2):
+        import threading
+        self.interval = interval_sec
+        self.peak_vram_mb = 0.0
+        self.total_vram_mb = 0.0
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    def start(self):
+        import threading
+        self.stop_event.clear()
+        initial = _query_vram()
+        self.peak_vram_mb = initial.get("vram_used_mb", 0.0)
+        self.total_vram_mb = initial.get("vram_total_mb", 0.0)
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def _run(self):
+        import time
+        while not self.stop_event.is_set():
+            sample = _query_vram()
+            used = sample.get("vram_used_mb", 0.0)
+            if used > self.peak_vram_mb:
+                self.peak_vram_mb = used
+            if not self.total_vram_mb:
+                self.total_vram_mb = sample.get("vram_total_mb", 0.0)
+            time.sleep(self.interval)
+
+    def stop(self) -> tuple[float, float]:
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join(timeout=1.0)
+        final_sample = _query_vram()
+        used = final_sample.get("vram_used_mb", 0.0)
+        if used > self.peak_vram_mb:
+            self.peak_vram_mb = used
+        return self.peak_vram_mb, self.total_vram_mb
+
 
 def main():
+    import time
+
     parser = argparse.ArgumentParser(description="Multi-pass floor plan reader.")
     parser.add_argument("image", help="Path to floor plan image")
     parser.add_argument("--save", help="Path to save output JSON")
     parser.add_argument("--fullpage", action="store_true", help="Run Pass F (full page) only")
+    parser.add_argument("--timing", action="store_true", help="Log wall time and peak VRAM via nvidia-smi")
     args = parser.parse_args()
 
     from ocr_engine import resolve_image_path
@@ -1032,11 +1102,18 @@ def main():
         print(f"Error: Image '{args.image}' not found.")
         return 1
 
+    t0 = time.perf_counter()
+    sampler = VRAMSampler(interval_sec=0.2) if args.timing else None
+    if sampler:
+        sampler.start()
+
     if args.fullpage:
         print("Running Pass F (Full Page) only...")
         plan = run_pass_full(args.image)
         items = floorplan_reader_v2.plan_values(plan)
         print(f"\nFull-page extraction completed: {len(items)} labels returned.")
+        if sampler:
+            sampler.stop()
         if args.save:
             with open(args.save, "w", encoding="utf-8") as f:
                 json.dump(plan, f, indent=2)
@@ -1044,6 +1121,9 @@ def main():
         return 0
 
     plan = read_plan(args.image, save_path=args.save)
+    wall_seconds = round(time.perf_counter() - t0, 2)
+    peak_vram, total_vram = sampler.stop() if sampler else (0.0, 0.0)
+
     items = plan.get("dimensions", [])
     print(f"\n{'='*82}")
     print(f"MULTI-PASS EXTRACTION RESULTS ({len(items)} total merged dimensions/rooms)")
@@ -1059,6 +1139,22 @@ def main():
     print(f"{'='*82}\n")
 
     chain_report(plan)
+
+    if args.timing:
+        plan["stats"] = {
+            "wall_time_seconds": wall_seconds,
+            "peak_vram_used_mb": peak_vram,
+            "vram_total_mb": total_vram,
+        }
+        print("=" * 60)
+        print("PERFORMANCE & RESOURCE METRICS (--timing)")
+        print("=" * 60)
+        print(f"  Wall-clock time   : {wall_seconds:.2f} s")
+        if total_vram > 0:
+            print(f"  GPU Peak VRAM used: {peak_vram:.1f} MB / {total_vram:.1f} MB ({peak_vram / total_vram * 100:.1f}%)")
+        else:
+            print("  GPU VRAM          : nvidia-smi not detected or GPU inactive")
+        print("=" * 60 + "\n")
 
     img_name = Path(args.image).stem
     expected_path = f"answers/{img_name}_expected.json"
@@ -1077,7 +1173,6 @@ def main():
         json.dump(plan, f, indent=2)
     print(f"Saved merged result to: {save_dest}")
     return 0
-
 
 
 if __name__ == "__main__":

@@ -72,6 +72,9 @@ class Suggestion:
     remaining_violations: int
     cost: float
     delta_mm: float
+    remaining_excess_mm: float = 0.0
+    status: str = "complete"
+    hypothesis: str = "candidate_edit"
 
 
 def chain_constraint(cid, total, parts, tol_mm, wall_mm=None, wall_max_mm=230.0) -> Constraint:
@@ -173,12 +176,57 @@ def candidate_edits(text: str, unit: str, confusions=DEFAULT_CONFUSIONS) -> list
 def suggest(labels: dict[str, Label], constraints: list[Constraint], max_results: int = 10,
             confusions=DEFAULT_CONFUSIONS) -> list[Suggestion]:
     """Single-label edits that reduce the number of violated constraints, best first."""
+    from parse import format_mm
     values = _values(labels)
     base = violations(values, constraints)
     if not base:
         return []
+    base_excess = sum(v.excess_mm for v in base)
     suspects = {i for v in base for i in [v.constraint.total] + v.constraint.parts}
     results: list[Suggestion] = []
+    seen: set[tuple[str, str]] = set()
+
+    # 1. Multi-chain consensus hypothesis ("overall is wrong"):
+    # When two or more independent chains agree on the same sum within tolerance,
+    # the hypothesis "overall is wrong" ranks first with cost 0.25.
+    chain_cons = [c for c in constraints if c.kind == "chain"]
+    chain_sums: dict[str, float] = {}
+    for c in chain_cons:
+        if all(p in values for p in c.parts):
+            chain_sums[c.id] = sum(values[p] for p in c.parts)
+
+    for i in range(len(chain_cons)):
+        for j in range(i + 1, len(chain_cons)):
+            c1, c2 = chain_cons[i], chain_cons[j]
+            if c1.id in chain_sums and c2.id in chain_sums:
+                s1, s2 = chain_sums[c1.id], chain_sums[c2.id]
+                if abs(s1 - s2) <= 152.4:
+                    # Consensus trial updates both overalls together if linked
+                    trial = dict(values)
+                    trial[c1.total] = s1
+                    trial[c2.total] = s2
+                    trial_viols = violations(trial, constraints)
+                    rem_viols = len(trial_viols)
+                    rem_excess = sum(v.excess_mm for v in trial_viols)
+
+                    for c_target, s_val in [(c1, s1), (c2, s2)]:
+                        t_lbl = labels.get(c_target.total)
+                        if t_lbl and t_lbl.mm is not None:
+                            new_text = format_mm(s_val, t_lbl.unit)
+                            if new_text != t_lbl.text:
+                                key = (c_target.total, new_text)
+                                if key not in seen:
+                                    seen.add(key)
+                                    status = "complete" if rem_viols == 0 else "partial"
+                                    results.append(Suggestion(
+                                        c_target.total, t_lbl.text, new_text,
+                                        rem_viols, 0.25, abs(s_val - t_lbl.mm),
+                                        remaining_excess_mm=round(rem_excess, 1),
+                                        status=status,
+                                        hypothesis="overall_is_wrong"
+                                    ))
+
+    # 2. Candidate digit/formatting edits
     for label_id in suspects:
         label = labels.get(label_id)
         if label is None or label.mm is None:
@@ -190,14 +238,42 @@ def suggest(labels: dict[str, Label], constraints: list[Constraint], max_results
                 continue
             if len(new_values) != 1:
                 continue
+            key = (label_id, new_text)
+            if key in seen:
+                continue
             trial = dict(values)
             trial[label_id] = new_values[0]
-            remaining = len(violations(trial, constraints))
-            if remaining < len(base):
-                results.append(Suggestion(label_id, label.text, new_text, remaining, cost,
-                                          abs(new_values[0] - label.mm)))
-    results.sort(key=lambda s: (s.remaining_violations, s.cost, s.delta_mm, s.label_id))
-    return results[:max_results]
+            trial_viols = violations(trial, constraints)
+            rem_viols = len(trial_viols)
+            rem_excess = sum(v.excess_mm for v in trial_viols)
+
+            if rem_viols < len(base) or rem_excess < base_excess - 50.0:
+                seen.add(key)
+                status = "complete" if rem_viols == 0 else "partial"
+                results.append(Suggestion(
+                    label_id, label.text, new_text, rem_viols, cost,
+                    abs(new_values[0] - label.mm),
+                    remaining_excess_mm=round(rem_excess, 1),
+                    status=status,
+                    hypothesis="digit_confusion"
+                ))
+
+    # Deduplicate tied edits & sort
+    results.sort(key=lambda s: (s.remaining_violations, s.cost, s.remaining_excess_mm, s.delta_mm, s.label_id))
+
+    deduped_results: list[Suggestion] = []
+    seen_digit_edits = set()
+    for s in results:
+        if s.hypothesis == "overall_is_wrong":
+            deduped_results.append(s)
+            continue
+        sig = (s.old_text, s.new_text, s.cost, s.remaining_violations, round(s.remaining_excess_mm, 1))
+        if sig in seen_digit_edits:
+            continue
+        seen_digit_edits.add(sig)
+        deduped_results.append(s)
+
+    return deduped_results[:max_results]
 
 
 # ---------------------------------------------------------------------------
